@@ -1,4 +1,4 @@
-const about = (_req, res) => res.render('index', { title: 'About' });
+const about = (_req, res) => res.render('generic-text', { title: 'About' });
 
 module.exports = {
     about
