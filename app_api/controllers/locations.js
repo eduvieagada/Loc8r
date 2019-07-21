@@ -36,6 +36,7 @@ const locationsCreate = (req, res) => {
 const locationsListByDistance = async (req, res) => {
     const lng = parseFloat(req.query.lng);
     const lat = parseFloat(req.query.lat);
+
     const near = {
         type: 'Point',
         coordinates: [lng, lat]
@@ -58,12 +59,13 @@ const locationsListByDistance = async (req, res) => {
         const locations = results.map(result => { 
             return {
                 id: result._id, name: result.name, address: result.address, rating: result.rating,
-                facilities: result.facilities, distance: `${result.distance.calculated.toFixed()}m`
+                facilities: result.facilities, distance: `${result.distance.calculated.toFixed()}`
             }
         });
         return res.status(200).json(locations);
     } catch (err) {
         console.log(err);
+        return res.status(500);
     }
 }
 
