@@ -13,7 +13,7 @@ block content
             .card
               .card-block
                 h4
-                  a(href='/location')= location.name
+                  a(href=`/location/${location.id}`)= location.name
                 small &nbsp;
                   +outputRating(location.rating)
                 span.badge.badge-pill.badge-default.float-right= location.distance

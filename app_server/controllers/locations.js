@@ -7,6 +7,20 @@ const apiOptions = {
 if (process.env.NODE_ENV === 'production')
     apiOptions.server = 'https://protected-cove-47724.herokuapp.com';
 
+const showError = (req, res, status) => {
+    let title = '';
+    let content = '';
+    if (status === 404) {
+        title = '404, page not found';
+        content = "Oh dear. Looks like you can't find this page. Sorry.";
+    } else {
+        title = `${status}, something's gone wrong`;
+        content = 'Something, somewhere, has gone just a little bit wrong.';
+    }
+    res.status(status);
+
+    res.render('generic-text', { title, content });
+};
 
 const formatDistance = (distance) => {
     let thisDistance = 0;
@@ -69,54 +83,79 @@ const homelist = (req, res) => {
     });
 }
 
-/* GET 'Location info' page */
-const locationInfo = (req, res) => res.render('location-info', { 
-    title: 'Starcups',
-    pageHeader: { title: 'Starcups' },
-    sidebar: {
-        context: 'is on Loc8r because it has accessible wifi and space to sit down with your laptop and get some work done.',
-        callToAction: 'If you\'ve been and you like it - or if you don\'t - please leave a review to help other people just like you.'
-    },
-    location: {
-        name: 'Starcups',
-        address: '125 High Street, Reading, RG6 1PS',
-        rating: 3,
-        facilities: ['Hot drinks', 'Food', 'Premium wifi'],
-        coords: {lat: 51.455041, lng: -0.9690884},
-        openingTimes: [{
-            days: 'Monday - Friday',
-            opening: '7:00am',
-            closing: '7:00pm',
-            closed: false
-            }, {
-            days: 'Saturday',
-            opening: '8:00am',
-            closing: '5:00pm',
-            closed: false
-            }, {
-            days: 'Sunday',
-            closed: true
-        }],
-        reviews: [{
-            author: 'Simon Holmes',
-            rating: 5,
-            timestamp: '16 July 2013',
-            reviewText: 'What a great place. I can\'t say enough good things about it.'
-            }, {
-            author: 'Charlie Chaplin',
-            rating: 3,
-            timestamp: '16 June 2013',
-            reviewText: 'It was okay. Coffee wasn\'t great, but the wifi was fast.'
-        }]
+const renderDetailPage = (req, res, location) => {
+    res.render('location-info', { 
+        title: location.name,
+        pageHeader: { title: location.name },
+        sidebar: {
+            context: 'is on Loc8r because it has accessible wifi and space to sit down with your laptop and get some work done.',
+            callToAction: 'If you\'ve been and you like it - or if you don\'t - please leave a review to help other people just like you.'
+        },
+        location
+    });
+}
+
+const getLocationInfo = (req, res, callback) => {
+    const path = `/api/locations/${req.params.locationid}`;
+    const requestOptions = {
+        url: `${apiOptions.server}${path}`,
+        method: 'GET',
+        json: {}
     }
-});
+    request(requestOptions, (err, {statusCode}, body) => {
+        let data = body;
+        if (statusCode === 200) {
+            data.coords = {
+                lng: body.coords[0],
+                lat: body.coords[1]
+            };
+            callback(req, res, data);
+        } else {
+            showError(req, res, statusCode);
+        }
+        
+    });
+}
+
+/* GET 'Location info' page */
+const locationInfo = (req, res) => {
+    getLocationInfo(req, res, (req, res, responseData) => renderDetailPage(req, res, responseData));
+}
+
+const renderReviewForm = (req, res, { name }) => {
+    res.render('location-review-form', { 
+        title: `Review ${ name } on Loc8r`,
+        pageHeader: { title: `Review ${ name }` }
+    });
+};
 
 /* GET 'Add review' page */
-const addReview = (req, res) => res.render('location-review-form', { 
-    title: 'Review Starcups on Loc8r',
-    pageHeader: { title: 'Review Starcups' }
-});
+const addReview = (req, res) => {
+    getLocationInfo(req, res, (req, res, responseData) => renderReviewForm(req, res, responseData));
+};
+
+const doAddReview = (req, res) => {
+    const locationid = req.params.locationid;
+    const path = `/api/locations/${ locationid }/reviews`;
+    const postdata = {
+        author: req.body.name,
+        rating: parseInt(req.body.rating, 10),
+        reviewText: req.body.review
+    };
+    const requestOptions = {
+        url: `${ apiOptions.server }${ path }`,
+        method: 'POST',
+        json: postdata
+    };
+
+    request(requestOptions, (err, { statusCode }, body) => {
+        if (statusCode === 201)
+            res.redirect(`/location/${ locationid }`);
+        else
+            showError(req, res, statusCode);
+    });
+};
 
 module.exports = {
-    homelist, locationInfo, addReview
+    homelist, locationInfo, addReview, doAddReview
 };
